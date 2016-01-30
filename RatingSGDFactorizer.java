@@ -58,7 +58,7 @@ public class RatingSGDFactorizer extends AbstractFactorizer {
     protected final DataModel WriterdataModel;
     protected long[] cachedUserIDs;
     protected long[] cachedItemIDs;
-    protected final HashSet<Long> SocialIDset=new HashSet<Long>();
+    protected final HashSet<Long> SocialIDset = new HashSet<Long>();
     protected double biasLearningRate = 0.1;
     protected double biasReg = 0.1;
 
@@ -66,16 +66,17 @@ public class RatingSGDFactorizer extends AbstractFactorizer {
     protected static final int USER_BIAS_INDEX = 0;
     /** place in item vector where the bias is stored */
     protected static final int ITEM_BIAS_INDEX = 1;
-    protected final HashMap<Long,Long> postwriter;
-    public  int test_record_count;
+    protected final HashMap<Long, Long> postwriter;
+    public int test_record_count;
     protected final long testuser;
     protected final long coveruser;
 
-    static <K,V extends Comparable<? super V>>
-    SortedSet<Map.Entry<K,V>> entriesSortedByValues(Map<K,V> map) {
-        SortedSet<Map.Entry<K,V>> sortedEntries = new TreeSet<Map.Entry<K,V>>(
-                new Comparator<Map.Entry<K,V>>() {
-                    @Override public int compare(Map.Entry<K,V> e1, Map.Entry<K,V> e2) {
+    static <K, V extends Comparable<? super V>>
+    SortedSet<Map.Entry<K, V>> entriesSortedByValues(Map<K, V> map) {
+        SortedSet<Map.Entry<K, V>> sortedEntries = new TreeSet<Map.Entry<K, V>>(
+                new Comparator<Map.Entry<K, V>>() {
+                    @Override
+                    public int compare(Map.Entry<K, V> e1, Map.Entry<K, V> e2) {
                         int res = e2.getValue().compareTo(e1.getValue());
                         return res != 0 ? res : 1;
                     }
@@ -88,7 +89,8 @@ public class RatingSGDFactorizer extends AbstractFactorizer {
     public RatingSGDFactorizer(DataModel dataModel, DataModel SocialdataModel, DataModel WriterdataModel,
                                int numFeatures, int numIterations, long testuser, long coveruser,
                                HashMap<Long, Long> postwriter) throws TasteException {
-        this(dataModel,SocialdataModel,WriterdataModel, numFeatures, 0.01, 0.1, 0.01, numIterations, 0.95, testuser,coveruser,postwriter);
+        this(dataModel, SocialdataModel, WriterdataModel, numFeatures, 0.01, 0.1, 0.01, numIterations, 0.95, testuser,
+             coveruser, postwriter);
     }
 
     public RatingSGDFactorizer(DataModel dataModel, DataModel SocialdataModel, DataModel WriterdataModel,
@@ -98,7 +100,7 @@ public class RatingSGDFactorizer extends AbstractFactorizer {
                                long testuser, long coveruser, HashMap<Long, Long> postwriter) throws TasteException {
         super(dataModel);
         this.dataModel = dataModel;
-        this.SocialdataModel=SocialdataModel;
+        this.SocialdataModel = SocialdataModel;
         this.WriterdataModel = WriterdataModel;
         this.numFeatures = numFeatures + FEATURE_OFFSET;
         this.numIterations = numIterations;
@@ -107,18 +109,19 @@ public class RatingSGDFactorizer extends AbstractFactorizer {
         this.learningRateDecay = learningRateDecay;
         this.preventOverfitting = preventOverfitting;
         this.randomNoise = randomNoise;
-        this.testuser=testuser;
-        this.coveruser=coveruser;
-        this.postwriter=postwriter;
-        this.test_record_count=0;
+        this.testuser = testuser;
+        this.coveruser = coveruser;
+        this.postwriter = postwriter;
+        this.test_record_count = 0;
     }
 
     protected void prepareTraining() throws TasteException {
         RandomWrapper random = (RandomWrapper) RandomUtils.getRandom(0L);
         userVectors = new double[dataModel.getNumUsers()][numFeatures];
         itemVectors = new double[dataModel.getNumItems()][numFeatures];
-        LongPrimitiveIterator socialuser=SocialdataModel.getUserIDs();
-        while (socialuser.hasNext()) { //create social date model idset because user may have no friend ,and it will cause bug
+        LongPrimitiveIterator socialuser = SocialdataModel.getUserIDs();
+        while (socialuser
+                .hasNext()) { //create social date model idset because user may have no friend ,and it will cause bug
             long userID = socialuser.nextLong();
             SocialIDset.add(userID);
         }
@@ -141,60 +144,60 @@ public class RatingSGDFactorizer extends AbstractFactorizer {
         }
 //compute bias
         //user bias
-        double userAverage=0;
-        double userMax=-Double.MAX_VALUE;
-        double userMin=Double.MAX_VALUE;
+        double userAverage = 0;
+        double userMax = -Double.MAX_VALUE;
+        double userMin = Double.MAX_VALUE;
         LongPrimitiveIterator userIDs = dataModel.getUserIDs();
         while (userIDs.hasNext()) {
-            long userid=userIDs.nextLong();
-            double user_sum=0;
-            for(Preference record : dataModel.getPreferencesFromUser(userid)){
-                user_sum+=record.getValue();
+            long userid = userIDs.nextLong();
+            double user_sum = 0;
+            for (Preference record : dataModel.getPreferencesFromUser(userid)) {
+                user_sum += record.getValue();
             }
-            userAverage+=user_sum;
-            userMax=(user_sum>userMax)?user_sum:userMax;
-            userMin=(user_sum<userMin)?user_sum:userMin;
-            int userindex=userIndex(userid);
-            userVectors[userindex][USER_BIAS_INDEX]=user_sum;
+            userAverage += user_sum;
+            userMax = (user_sum > userMax) ? user_sum : userMax;
+            userMin = (user_sum < userMin) ? user_sum : userMin;
+            int userindex = userIndex(userid);
+            userVectors[userindex][USER_BIAS_INDEX] = user_sum;
         }
-        userAverage/=dataModel.getNumUsers();
-        double min_dist=userAverage-userMin;
-        double max_dist=userMax-userAverage;
-        double normalize=(min_dist>max_dist)?min_dist:max_dist;
+        userAverage /= dataModel.getNumUsers();
+        double min_dist = userAverage - userMin;
+        double max_dist = userMax - userAverage;
+        double normalize = (min_dist > max_dist) ? min_dist : max_dist;
         userIDs = dataModel.getUserIDs();
         while (userIDs.hasNext()) {
-            long userid=userIDs.nextLong();
-            int userindex=userIndex(userid);
-            userVectors[userindex][USER_BIAS_INDEX]-=userAverage;
-            userVectors[userindex][USER_BIAS_INDEX]/=normalize;
+            long userid = userIDs.nextLong();
+            int userindex = userIndex(userid);
+            userVectors[userindex][USER_BIAS_INDEX] -= userAverage;
+            userVectors[userindex][USER_BIAS_INDEX] /= normalize;
         }
         //item bias
-        double itemAverage=0;
-        double itemMax=-Double.MAX_VALUE;
-        double itemMin=Double.MAX_VALUE;
+        double itemAverage = 0;
+        double itemMax = -Double.MAX_VALUE;
+        double itemMin = Double.MAX_VALUE;
         LongPrimitiveIterator itemIDs = dataModel.getItemIDs();
         while (itemIDs.hasNext()) {
-            long itemid=itemIDs.nextLong();
-            double item_sum=0;
-            for(Preference record : dataModel.getPreferencesForItem(itemid)){
-                item_sum+=record.getValue();
+            long itemid = itemIDs.nextLong();
+            double item_sum = 0;
+            for (Preference record : dataModel.getPreferencesForItem(itemid)) {
+                item_sum += record.getValue();
             }
-            itemAverage+=item_sum;
-            itemMax=(item_sum>itemMax)?item_sum:itemMax;
-            itemMin=(item_sum<itemMin)?item_sum:itemMin;
-            int itemindex=itemIndex(itemid);
-            itemVectors[itemindex][ITEM_BIAS_INDEX]=item_sum;
+            itemAverage += item_sum;
+            itemMax = (item_sum > itemMax) ? item_sum : itemMax;
+            itemMin = (item_sum < itemMin) ? item_sum : itemMin;
+            int itemindex = itemIndex(itemid);
+            itemVectors[itemindex][ITEM_BIAS_INDEX] = item_sum;
         }
-        itemAverage/=dataModel.getNumItems();
-        min_dist=itemAverage-itemMin;
-        max_dist=itemMax-itemAverage;
-        normalize=(min_dist>max_dist)?min_dist:max_dist;
+        itemAverage /= dataModel.getNumItems();
+        min_dist = itemAverage - itemMin;
+        max_dist = itemMax - itemAverage;
+        normalize = (min_dist > max_dist) ? min_dist : max_dist;
         itemIDs = dataModel.getItemIDs();
         while (itemIDs.hasNext()) {
-            long itemid=itemIDs.nextLong();
-            int itemindex=itemIndex(itemid);
-            itemVectors[itemindex][ITEM_BIAS_INDEX]-=itemAverage;
-            itemVectors[itemindex][ITEM_BIAS_INDEX]/=normalize;
+            long itemid = itemIDs.nextLong();
+            int itemindex = itemIndex(itemid);
+            itemVectors[itemindex][ITEM_BIAS_INDEX] -= itemAverage;
+            itemVectors[itemindex][ITEM_BIAS_INDEX] /= normalize;
         }
 
         cachePreferences();
@@ -262,95 +265,97 @@ public class RatingSGDFactorizer extends AbstractFactorizer {
                 long itemId = cachedItemIDs[index];
                 float rating = dataModel.getPreferenceValue(userId, itemId);
                 if (rating > 0) {//蓋掉testuser和coveruser 的 reply record
-                    if(testuser==userId) {
-                        if(coveruser==(postwriter.get(itemId))){
+                    if (testuser == userId) {
+                        if (coveruser == (postwriter.get(itemId))) {
                             test_record_count++;
-                        }else{
+                        } else {
                             updateParameters(userId, itemId, rating, currentLearningRate);
                         }
-                    }else{
+                    } else {
                         updateParameters(userId, itemId, rating, currentLearningRate);
                     }
-                }else{
+                } else {
                     updateParameters(userId, itemId, rating, currentLearningRate);
                 }
             }
             currentLearningRate *= learningRateDecay;
         }
-        System.out.println("Test records:"+test_record_count/numIterations);
+        System.out.println("Test records:" + test_record_count / numIterations);
         //aggregate writer feature  produce a new user-write vectors replace itemVectors
-        double[][] writerVectors= new double[WriterdataModel.getNumUsers()][numFeatures];
-        LongPrimitiveIterator it = WriterdataModel.getUserIDs() ;
+        double[][] writerVectors = new double[WriterdataModel.getNumUsers()][numFeatures];
+        LongPrimitiveIterator it = WriterdataModel.getUserIDs();
         while (it.hasNext()) {
-            long userid=it.nextLong();
+            long userid = it.nextLong();
             int userIndex = userIndex(userid);
-            for(int i=0;i<numFeatures;i++){
-                writerVectors[userIndex][i]=0.0;
+            for (int i = 0; i < numFeatures; i++) {
+                writerVectors[userIndex][i] = 0.0;
             }
-            int write=0;
+            int write = 0;
             for (long item : WriterdataModel.getItemIDsFromUser(userid)) {
-                int itemIndex=itemIndex(item);
-                if(itemIndex< dataModel.getNumItems()) {
+                int itemIndex = itemIndex(item);
+                if (itemIndex < dataModel.getNumItems()) {
                     write++;
                     for (int i = 0; i < numFeatures; i++) {
                         writerVectors[userIndex][i] += itemVectors[itemIndex][i];
                     }
                 }
             }
-            if(write>0) {
+            if (write > 0) {
                 writerVectors[userIndex] = unitvectorize(writerVectors[userIndex]);
-                writerVectors[userIndex][USER_BIAS_INDEX]/=write;
-                writerVectors[userIndex][ITEM_BIAS_INDEX]/=write;
+                writerVectors[userIndex][USER_BIAS_INDEX] /= write;
+                writerVectors[userIndex][ITEM_BIAS_INDEX] /= write;
             }
         }
         return createFactorization(userVectors, writerVectors);
     }
+
     public Factorization weighted_factorize() throws TasteException {
         //aggregate aggregated writer feature  produce a new user-write vectors replace itemVectors
-        double[][] writerVectors= new double[WriterdataModel.getNumUsers()][numFeatures];
-        LongPrimitiveIterator it = WriterdataModel.getUserIDs() ;
+        double[][] writerVectors = new double[WriterdataModel.getNumUsers()][numFeatures];
+        LongPrimitiveIterator it = WriterdataModel.getUserIDs();
         while (it.hasNext()) {
-            long userid=it.nextLong();
+            long userid = it.nextLong();
             int userIndex = userIndex(userid);
-            for(int i=0;i<numFeatures;i++){
-                writerVectors[userIndex][i]=0.0;
+            for (int i = 0; i < numFeatures; i++) {
+                writerVectors[userIndex][i] = 0.0;
             }
-            FastIDSet updateset=  WriterdataModel.getItemIDsFromUser(userid);
-            int post_count=updateset.size();
+            FastIDSet updateset = WriterdataModel.getItemIDsFromUser(userid);
+            int post_count = updateset.size();
             for (long item : updateset) {
-                int itemIndex=itemIndex(item);
-                if(itemIndex< dataModel.getNumItems()) {
-                    double[] weight_array=new double[numFeatures];
-                    HashMap<Integer,Double> itemvaluemap=new HashMap<Integer, Double>();
+                int itemIndex = itemIndex(item);
+                if (itemIndex < dataModel.getNumItems()) {
+                    double[] weight_array = new double[numFeatures];
+                    HashMap<Integer, Double> itemvaluemap = new HashMap<Integer, Double>();
                     for (int i = 0; i < numFeatures; i++) {   //find max feature
                         itemvaluemap.put(i, itemVectors[itemIndex][i]);
-                        weight_array[i]=1;
+                        weight_array[i] = 1;
                     }
-                    if(post_count>1) {
+                    if (post_count > 1) {
                         SortedSet<Map.Entry<Integer, Double>> sorted_map = entriesSortedByValues(itemvaluemap);
-                        int i=0;
+                        int i = 0;
                         for (Map.Entry<Integer, Double> entry : sorted_map) {
                             weight_array[entry.getKey()] += 1;
                             i++;
-                            if(i>0){
+                            if (i > 0) {
                                 break;
                             }
                         }
                     }
                     for (int i = 0; i < numFeatures; i++) {   //aggregate
-                        writerVectors[userIndex][i] =weight_array[i]*itemVectors[itemIndex][i];
+                        writerVectors[userIndex][i] = weight_array[i] * itemVectors[itemIndex][i];
                     }
                 }
             }
-            if(post_count>0) {
+            if (post_count > 0) {
                 //unit vector
                 writerVectors[userIndex] = unitvectorize(writerVectors[userIndex]);
-                writerVectors[userIndex][USER_BIAS_INDEX]/=post_count;
-                writerVectors[userIndex][ITEM_BIAS_INDEX]/=post_count;
+                writerVectors[userIndex][USER_BIAS_INDEX] /= post_count;
+                writerVectors[userIndex][ITEM_BIAS_INDEX] /= post_count;
             }
         }
-        return createFactorization(userVectors,writerVectors);
+        return createFactorization(userVectors, writerVectors);
     }
+
     double getAveragePreference() throws TasteException {
         RunningAverage average = new FullRunningAverage();
         LongPrimitiveIterator it = dataModel.getUserIDs();
@@ -390,8 +395,8 @@ public class RatingSGDFactorizer extends AbstractFactorizer {
             double deltaItemFeature = err * userFeature - preventOverfitting * itemFeature;
             itemVector[feature] += currentLearningRate * deltaItemFeature;
         }
-        itemVectors[itemIndex]=unitvectorize(itemVector);
-        userVectors[userIndex]=unitvectorize(userVector);
+        itemVectors[itemIndex] = unitvectorize(itemVector);
+        userVectors[userIndex] = unitvectorize(userVector);
     }
 
     private double predictRating(int userID, int itemID) {
@@ -401,19 +406,21 @@ public class RatingSGDFactorizer extends AbstractFactorizer {
         }
         return sum;
     }
-    public double[] unitvectorize(double []vector){
-        double vectorlength=vectorlength(vector);
-        for(int i=FEATURE_OFFSET;i<numFeatures;i++){
-            vector[i]/=vectorlength;
+
+    public double[] unitvectorize(double[] vector) {
+        double vectorlength = vectorlength(vector);
+        for (int i = FEATURE_OFFSET; i < numFeatures; i++) {
+            vector[i] /= vectorlength;
         }
         return vector;
     }
-    public double vectorlength(double[] vector){
-        double vectorlength=0.0;
-        for(int i=FEATURE_OFFSET;i<numFeatures;i++){
-            vectorlength+= vector[i]*vector[i];
+
+    public double vectorlength(double[] vector) {
+        double vectorlength = 0.0;
+        for (int i = FEATURE_OFFSET; i < numFeatures; i++) {
+            vectorlength += vector[i] * vector[i];
         }
-        vectorlength=Math.sqrt(vectorlength);
+        vectorlength = Math.sqrt(vectorlength);
         return vectorlength;
     }
 }

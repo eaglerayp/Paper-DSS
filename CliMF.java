@@ -37,7 +37,8 @@ public class CliMF extends AbstractFactorizer {
     private class Usersitemidset {
         private long[] replyidset;
         private long[] noreplyidset;
-        public  Usersitemidset(){
+
+        public Usersitemidset() {
         }
 
         public long[] getReplyidset() {
@@ -50,14 +51,15 @@ public class CliMF extends AbstractFactorizer {
 
 
         public void setReplyidset(long[] replyidset) {
-            this.replyidset = (replyidset == null ? null :replyidset.clone() );
+            this.replyidset = (replyidset == null ? null : replyidset.clone());
         }
 
         public void setNoreplyidset(long[] noreplyidset) {
-            this.noreplyidset =  (noreplyidset == null ? null :noreplyidset.clone() );
+            this.noreplyidset = (noreplyidset == null ? null : noreplyidset.clone());
         }
 
     }
+
     protected static final int FEATURE_OFFSET = 2;
     /** place in user vector where the bias is stored */
     protected static final int USER_BIAS_INDEX = 0;
@@ -82,21 +84,25 @@ public class CliMF extends AbstractFactorizer {
     protected final DataModel dataModel;
     protected final DataModel SocialdataModel;
     protected final DataModel WriterdataModel;
-    protected final HashSet<Long> SocialIDset=new HashSet<Long>();
+    protected final HashSet<Long> SocialIDset = new HashSet<Long>();
     protected long testuser;
     protected long coveruser;
-    protected final HashMap<Long,Long> postwriter;
-    public int left_records=0;
-    public int Total_Test_records=0;
-    public int Total_records=0;
+    protected final HashMap<Long, Long> postwriter;
+    public int left_records = 0;
+    public int Total_Test_records = 0;
+    public int Total_records = 0;
 
-    public CliMF(DataModel dataModel,DataModel SocialdataModel,DataModel WriterdataModel,
-                            int numFeatures, int numIterations,long testuser,long coveruser,HashMap<Long,Long> postwriter) throws TasteException {
-        this(dataModel,SocialdataModel,WriterdataModel, numFeatures, 1, 0.1, 0.01, numIterations,0.95,testuser,coveruser,postwriter);
+    public CliMF(DataModel dataModel, DataModel SocialdataModel, DataModel WriterdataModel,
+                 int numFeatures, int numIterations, long testuser, long coveruser,
+                 HashMap<Long, Long> postwriter) throws TasteException {
+        this(dataModel, SocialdataModel, WriterdataModel, numFeatures, 1, 0.1, 0.01, numIterations, 0.95, testuser,
+             coveruser, postwriter);
     }
 
-    public CliMF(DataModel dataModel,DataModel SocialdataModel,DataModel WriterdataModel, int numFeatures, double learningRate, double preventOverfitting,
-                            double randomNoise, int numIterations, double learningRateDecay,long testuser,long coveruser,HashMap<Long,Long> postwriter) throws TasteException {
+    public CliMF(DataModel dataModel, DataModel SocialdataModel, DataModel WriterdataModel, int numFeatures,
+                 double learningRate, double preventOverfitting,
+                 double randomNoise, int numIterations, double learningRateDecay, long testuser, long coveruser,
+                 HashMap<Long, Long> postwriter) throws TasteException {
         super(dataModel);
         this.dataModel = dataModel;
         this.SocialdataModel = SocialdataModel;
@@ -107,9 +113,9 @@ public class CliMF extends AbstractFactorizer {
         this.learningRateDecay = learningRateDecay;
         this.preventOverfitting = preventOverfitting;
         this.randomNoise = randomNoise;
-        this.testuser=testuser;
-        this.coveruser=coveruser;
-        this.postwriter=postwriter;
+        this.testuser = testuser;
+        this.coveruser = coveruser;
+        this.postwriter = postwriter;
     }
 
     protected void prepareTraining() throws TasteException {
@@ -145,68 +151,68 @@ public class CliMF extends AbstractFactorizer {
         //compute bias
         try {
             computeBias();
-        }catch (TasteException e){
+        } catch (TasteException e) {
             System.out.println("error in bias computing");
         }
     }
 
-    public void computeBias()  throws TasteException{
+    public void computeBias() throws TasteException {
         //user bias
-        double userAverage=0;
-        double userMax=-Double.MAX_VALUE;
-        double userMin=Double.MAX_VALUE;
+        double userAverage = 0;
+        double userMax = -Double.MAX_VALUE;
+        double userMin = Double.MAX_VALUE;
         LongPrimitiveIterator userIDs = dataModel.getUserIDs();
         while (userIDs.hasNext()) {
-            long userid=userIDs.nextLong();
-            double user_sum=0;
-            for(Preference record : dataModel.getPreferencesFromUser(userid)){
-                user_sum+=record.getValue();
+            long userid = userIDs.nextLong();
+            double user_sum = 0;
+            for (Preference record : dataModel.getPreferencesFromUser(userid)) {
+                user_sum += record.getValue();
             }
-            userAverage+=user_sum;
-            userMax=(user_sum>userMax)?user_sum:userMax;
-            userMin=(user_sum<userMin)?user_sum:userMin;
-            int userindex=userIndex(userid);
-            userVectors[userindex][USER_BIAS_INDEX]=user_sum;
+            userAverage += user_sum;
+            userMax = (user_sum > userMax) ? user_sum : userMax;
+            userMin = (user_sum < userMin) ? user_sum : userMin;
+            int userindex = userIndex(userid);
+            userVectors[userindex][USER_BIAS_INDEX] = user_sum;
         }
-        userAverage/=dataModel.getNumUsers();
-        double min_dist=userAverage-userMin;
-        double max_dist=userMax-userAverage;
-        double normalize=(min_dist>max_dist)?min_dist:max_dist;
+        userAverage /= dataModel.getNumUsers();
+        double min_dist = userAverage - userMin;
+        double max_dist = userMax - userAverage;
+        double normalize = (min_dist > max_dist) ? min_dist : max_dist;
         userIDs = dataModel.getUserIDs();
         while (userIDs.hasNext()) {
-            long userid=userIDs.nextLong();
-            int userindex=userIndex(userid);
-            userVectors[userindex][USER_BIAS_INDEX]-=userAverage;
-            userVectors[userindex][USER_BIAS_INDEX]/=normalize;
+            long userid = userIDs.nextLong();
+            int userindex = userIndex(userid);
+            userVectors[userindex][USER_BIAS_INDEX] -= userAverage;
+            userVectors[userindex][USER_BIAS_INDEX] /= normalize;
         }
 
         //item bias
-        double itemAverage=0;
-        double itemMax=-Double.MAX_VALUE;
-        double itemMin=Double.MAX_VALUE;
+        double itemAverage = 0;
+        double itemMax = -Double.MAX_VALUE;
+        double itemMin = Double.MAX_VALUE;
         LongPrimitiveIterator itemIDs = dataModel.getItemIDs();
         while (itemIDs.hasNext()) {
-            long itemid=itemIDs.nextLong();
-            double item_sum=0;
-            for(Preference record : dataModel.getPreferencesForItem(itemid)){
-                item_sum+=record.getValue();
+            long itemid = itemIDs.nextLong();
+            double item_sum = 0;
+            for (Preference record : dataModel.getPreferencesForItem(itemid)) {
+                item_sum += record.getValue();
             }
-            itemAverage+=item_sum;
-            itemMax=(item_sum>itemMax)?item_sum:itemMax;
-            itemMin=(item_sum<itemMin)?item_sum:itemMin;
-            int itemindex=itemIndex(itemid);
-            itemVectors[itemindex][ITEM_BIAS_INDEX]=item_sum;
+            itemAverage += item_sum;
+            itemMax = (item_sum > itemMax) ? item_sum : itemMax;
+            itemMin = (item_sum < itemMin) ? item_sum : itemMin;
+            int itemindex = itemIndex(itemid);
+            itemVectors[itemindex][ITEM_BIAS_INDEX] = item_sum;
         }
-        itemAverage/=dataModel.getNumItems();
-        min_dist=itemAverage-itemMin;
-        max_dist=itemMax-itemAverage;
-        normalize=(min_dist>max_dist)?min_dist:max_dist;
+        itemAverage /= dataModel.getNumItems();
+        min_dist = itemAverage - itemMin;
+        max_dist = itemMax - itemAverage;
+        normalize = (min_dist > max_dist) ? min_dist : max_dist;
         itemIDs = dataModel.getItemIDs();
         while (itemIDs.hasNext()) {
-            long itemid=itemIDs.nextLong();
-            int itemindex=itemIndex(itemid);
-            itemVectors[itemindex][ITEM_BIAS_INDEX]-=itemAverage;
-            itemVectors[itemindex][ITEM_BIAS_INDEX]/=normalize;
+            long itemid = itemIDs.nextLong();
+            int itemindex = itemIndex(itemid);
+            itemVectors[itemindex][ITEM_BIAS_INDEX] -= itemAverage;
+            itemVectors[itemindex][ITEM_BIAS_INDEX] /= normalize;
         }
     }
 
@@ -214,13 +220,13 @@ public class CliMF extends AbstractFactorizer {
     public Factorization factorize() throws TasteException {
         prepareTraining();
         double currentLearningRate = learningRate;
-        HashSet<Long> DMusers= new HashSet<Long>();
-        LongPrimitiveIterator ud=dataModel.getUserIDs();
-        while(ud.hasNext()){
+        HashSet<Long> DMusers = new HashSet<Long>();
+        LongPrimitiveIterator ud = dataModel.getUserIDs();
+        while (ud.hasNext()) {
             DMusers.add(ud.nextLong());
         }
         for (int it = 0; it < numIterations; it++) {
-            for(long userID:DMusers){
+            for (long userID : DMusers) {
                 //以user出發去跑iteration
                 updateParameters(userID, currentLearningRate);
             }
@@ -228,38 +234,38 @@ public class CliMF extends AbstractFactorizer {
         }//end learning iteration
 
         //aggregate writer feature  produce a new user-write vectors replace itemVectors
-        double[][] writerVectors= new double[WriterdataModel.getNumUsers()][numFeatures];
-        LongPrimitiveIterator it = WriterdataModel.getUserIDs() ;
+        double[][] writerVectors = new double[WriterdataModel.getNumUsers()][numFeatures];
+        LongPrimitiveIterator it = WriterdataModel.getUserIDs();
         while (it.hasNext()) {
-            long userid=it.nextLong();
+            long userid = it.nextLong();
             int userIndex = userIndex(userid);
-            for(int i=0;i<numFeatures;i++){
-                writerVectors[userIndex][i]=0.0;
+            for (int i = 0; i < numFeatures; i++) {
+                writerVectors[userIndex][i] = 0.0;
             }
-            int post_count=0;
+            int post_count = 0;
             for (long item : WriterdataModel.getItemIDsFromUser(userid)) {
-                int itemIndex=itemIndex(item);
-                if(itemIndex< dataModel.getNumItems()) {
+                int itemIndex = itemIndex(item);
+                if (itemIndex < dataModel.getNumItems()) {
                     post_count++;
                     for (int i = 0; i < numFeatures; i++) {
                         writerVectors[userIndex][i] += itemVectors[itemIndex][i];
                     }
                 }
             }
-            if(post_count>0) {
+            if (post_count > 0) {
                 //unit vector
                 writerVectors[userIndex] = unitvectorize(writerVectors[userIndex]);
-                writerVectors[userIndex][USER_BIAS_INDEX]/=post_count;
-                writerVectors[userIndex][ITEM_BIAS_INDEX]/=post_count;
+                writerVectors[userIndex][USER_BIAS_INDEX] /= post_count;
+                writerVectors[userIndex][ITEM_BIAS_INDEX] /= post_count;
             }
         }
-        int n=(int)(Math.random()*dataModel.getNumUsers());
+        int n = (int) (Math.random() * dataModel.getNumUsers());
         //System.out.println("writer"+n+" user bias:"+writerVectors[n][USER_BIAS_INDEX]);
         // System.out.println("writer"+n+"item bias:"+writerVectors[n][ITEM_BIAS_INDEX]);
-        assert writerVectors[n][USER_BIAS_INDEX]>0.99;
-        assert writerVectors[n][USER_BIAS_INDEX]<1.01;
+        assert writerVectors[n][USER_BIAS_INDEX] > 0.99;
+        assert writerVectors[n][USER_BIAS_INDEX] < 1.01;
 
-        return createFactorization(userVectors,writerVectors);//(userVectors, itemVectors);
+        return createFactorization(userVectors, writerVectors);//(userVectors, itemVectors);
     }
 
 
@@ -274,54 +280,54 @@ public class CliMF extends AbstractFactorizer {
 //        return average.getAverage();
 //    }
 
-    protected void updateParameters(long userID,double currentLearningRate) throws TasteException {
+    protected void updateParameters(long userID, double currentLearningRate) throws TasteException {
         int userIndex = userIndex(userID);
         double[] userVector = userVectors[userIndex];
 
-        Usersitemidset idset=new Usersitemidset();
-        splitReplyIDs(userID,idset);
-        long[] replyids=idset.getReplyidset();
+        Usersitemidset idset = new Usersitemidset();
+        splitReplyIDs(userID, idset);
+        long[] replyids = idset.getReplyidset();
         double[] g_fij = new double[replyids.length];
 
-        double sum_sgdu_cof = 0.0;
+        double[] sum_sgdu_cof = new double[replyids.length];
         double sum_sgdv_cof = 0.0;
 //        get g_fij
-        for(int index_rj=0; index_rj<replyids.length;index_rj++) {
+        for (int index_rj = 0; index_rj < replyids.length; index_rj++) {
             long replyid_j = replyids[index_rj];
             double fij = F_inner_product(userID, replyid_j);
             double g_negative_fij = logistic(-fij);
             g_fij[index_rj] = g_negative_fij;
 
-            for (long replyid_k : replyids){
+            for (long replyid_k : replyids) {
                 double fik = F_inner_product(userID, replyid_k);
-                double g_fik_fij = logistic(fik-fij);
-                double g_fij_fik = logistic(fij-fik);
+                double g_fik_fij = logistic(fik - fij);
+                double g_fij_fik = logistic(fij - fik);
 
-                double sgdu_item_son = g_fik_fij*g_fij_fik;
-                double sgdu_item_mother = 1- g_fik_fij;
-                double sgdu_item = sgdu_item_son/sgdu_item_mother;
+                double sgdu_item_son = g_fik_fij * g_fij_fik;
+                double sgdu_item_mother = 1 - g_fik_fij;
+                double sgdu_item = sgdu_item_son / sgdu_item_mother;
 
-                double sgdv_second_term = taylor_function(g_fik_fij)-taylor_function(g_fij_fik);
-                double sgdv_item = g_fij_fik*g_fik_fij*sgdv_second_term;
-                sum_sgdu_cof +=sgdu_item;
-                sum_sgdv_cof +=sgdv_item;
+                double sgdv_second_term = taylor_function(g_fik_fij) - taylor_function(g_fij_fik);
+                double sgdv_item = g_fij_fik * g_fik_fij * sgdv_second_term;
+                sum_sgdu_cof[index_rj] += sgdu_item;
+                sum_sgdv_cof += sgdv_item;
             }
         }
 
 //        update ui
         for (int feature = FEATURE_OFFSET; feature < numFeatures; feature++) {
-            double sgdu=0.0;
-            for(int index_rj=0; index_rj<replyids.length;index_rj++) {
+            double sgdu = 0.0;
+            for (int index_rj = 0; index_rj < replyids.length; index_rj++) {
                 long replyid_j = replyids[index_rj];
                 int qjIndex = itemIndex(replyid_j);
                 double Vj = itemVectors[qjIndex][feature];
 
                 double sum_sgdu_second_item = 0.0;
-                for (long replyid_k:replyids){
+                for (long replyid_k : replyids) {
                     int qkIndex = itemIndex(replyid_k);
                     double Vk = itemVectors[qkIndex][feature];
-                    double Vjk = Vj-Vk;
-                    sum_sgdu_second_item += Vjk*sum_sgdu_cof;
+                    double Vjk = Vj - Vk;
+                    sum_sgdu_second_item += Vjk * sum_sgdu_cof[index_rj];
                 }
 
                 sgdu += g_fij[index_rj] * Vj + sum_sgdu_second_item;
@@ -330,86 +336,87 @@ public class CliMF extends AbstractFactorizer {
             userVector[feature] += currentLearningRate * sgdu;
 
 //            update all relevant vj
-            for(int index_rj=0; index_rj<replyids.length;index_rj++) {
+            for (int index_rj = 0; index_rj < replyids.length; index_rj++) {
                 long replyid_j = replyids[index_rj];
                 int qjIndex = itemIndex(replyid_j);
                 double[] itemVector = itemVectors[qjIndex];
                 double sgdvj = g_fij[index_rj] + sum_sgdv_cof;
                 sgdvj *= userVector[feature];
-                sgdvj -= preventOverfitting*itemVector[feature];
+                sgdvj -= preventOverfitting * itemVector[feature];
                 itemVector[feature] += sgdvj;
             }
         }
     }
 
-    private double taylor_function(double x){
-        double mother = 1-x;
-        return (double)1/mother;
+    private double taylor_function(double x) {
+        double mother = 1 - x;
+        return (double) 1 / mother;
     }
 
-    private double F_inner_product(long userID, long itemID)  {
+    private double F_inner_product(long userID, long itemID) {
         double piqu = 0;
-        int itemindex=itemIndex(itemID);
-        int userindex=userIndex(userID);
+        int itemindex = itemIndex(itemID);
+        int userindex = userIndex(userID);
 
         //compute piqu
         for (int feature = FEATURE_OFFSET; feature < numFeatures; feature++) {//  puqi
             piqu += userVectors[userindex][feature] * itemVectors[itemindex][feature];
         }
 
-        assert piqu<1.1;
+        assert piqu < 1.1;
         return piqu;
     }
 
-    private double logistic(double x){
+    private double logistic(double x) {
         double one = 1.0;
-        double mother = 1+ Math.pow(Math.E,-x);
-        return one/mother;
+        double mother = 1 + Math.pow(Math.E, -x);
+        return one / mother;
     }
 
-    private void splitReplyIDs(long userID,Usersitemidset idset) throws TasteException {
-        FastIDSet itemids=dataModel.getItemIDsFromUser(userID);
-        FastIDSet replyids= new FastIDSet();
-        FastIDSet noreplyids= new FastIDSet();
-        for (long item:itemids){
+    private void splitReplyIDs(long userID, Usersitemidset idset) throws TasteException {
+        FastIDSet itemids = dataModel.getItemIDsFromUser(userID);
+        FastIDSet replyids = new FastIDSet();
+        FastIDSet noreplyids = new FastIDSet();
+        for (long item : itemids) {
             long writer = postwriter.get(item);
             if (dataModel.getPreferenceValue(userID, item) > 0) {
-                if(testuser==userID&&writer==coveruser) {//蓋掉testuser和coveruser information
+                if (testuser == userID && writer == coveruser) {//蓋掉testuser和coveruser information
                     Total_Test_records++;
-                }else{
+                } else {
                     replyids.add(item);
                 }
             } else {
                 noreplyids.add(item);
             }
         }
-        if(userID==testuser) {
+        if (userID == testuser) {
             left_records += replyids.size();
         }
-        Total_records+=replyids.size();
+        Total_records += replyids.size();
         idset.setReplyidset(replyids.toArray());
         idset.setNoreplyidset(noreplyids.toArray());
     }
 
-    public double[] unitvectorize(double []vector){
-        double vectorlength=vectorlength(vector);
-        for(int i=FEATURE_OFFSET;i<numFeatures;i++){
-            vector[i]/=vectorlength;
+    public double[] unitvectorize(double[] vector) {
+        double vectorlength = vectorlength(vector);
+        for (int i = FEATURE_OFFSET; i < numFeatures; i++) {
+            vector[i] /= vectorlength;
         }
         return vector;
     }
-    public double vectorlength(double[] vector){
-        double vectorlength=0.0;
+
+    public double vectorlength(double[] vector) {
+        double vectorlength = 0.0;
         //prevent overflow
-        double max=-Double.MAX_VALUE;
-        for(int i=FEATURE_OFFSET;i<numFeatures;i++){
-            max=(Math.abs(vector[i])>max)?Math.abs(vector[i]):max;
+        double max = -Double.MAX_VALUE;
+        for (int i = FEATURE_OFFSET; i < numFeatures; i++) {
+            max = (Math.abs(vector[i]) > max) ? Math.abs(vector[i]) : max;
         }
-        double max_square=max*max;
-        for(int i=FEATURE_OFFSET;i<numFeatures;i++){
-            vectorlength+= vector[i]*vector[i]/max_square;
+        double max_square = max * max;
+        for (int i = FEATURE_OFFSET; i < numFeatures; i++) {
+            vectorlength += vector[i] * vector[i] / max_square;
         }
-        vectorlength=max*Math.sqrt(vectorlength);
+        vectorlength = max * Math.sqrt(vectorlength);
         return vectorlength;
     }
 }

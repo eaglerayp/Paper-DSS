@@ -47,18 +47,22 @@ public final class SVDPPFactorizer extends RatingSGDFactorizer {
     private double[][] y; // item NN
     private Map<Integer, List<Integer>> itemsByUser;
     private final int numIterations;
+
     public SVDPPFactorizer(DataModel dataModel, DataModel SocialdataModel, DataModel WriterdataModel,
                            int numFeatures, int numIterations, long testuser, long coveruser,
                            HashMap<Long, Long> postwriter) throws TasteException {
-        this(dataModel,SocialdataModel,WriterdataModel, numFeatures, 0.7, 0.1, 0.01, numIterations, 0.95, testuser,coveruser,postwriter);
+        this(dataModel, SocialdataModel, WriterdataModel, numFeatures, 0.7, 0.1, 0.01, numIterations, 0.95, testuser,
+             coveruser, postwriter);
     }
 
     public SVDPPFactorizer(DataModel dataModel, DataModel SocialdataModel, DataModel WriterdataModel,
                            int numFeatures, double learningRate, double preventOverfitting,
-                           double randomNoise, int numIterations, double learningRateDecay,long testuser, long coveruser, HashMap<Long, Long> postwriter) throws TasteException {
-        super(dataModel,SocialdataModel,WriterdataModel, numFeatures, learningRate, preventOverfitting, randomNoise, numIterations, learningRateDecay, testuser,coveruser,postwriter);
-        this.test_record_count=0;
-        this.numIterations=numIterations;
+                           double randomNoise, int numIterations, double learningRateDecay, long testuser,
+                           long coveruser, HashMap<Long, Long> postwriter) throws TasteException {
+        super(dataModel, SocialdataModel, WriterdataModel, numFeatures, learningRate, preventOverfitting, randomNoise,
+              numIterations, learningRateDecay, testuser, coveruser, postwriter);
+        this.test_record_count = 0;
+        this.numIterations = numIterations;
     }
 
     //first 20,770,40,1,33
@@ -95,14 +99,14 @@ public final class SVDPPFactorizer extends RatingSGDFactorizer {
             List<Integer> itemIndexes = Lists.newArrayListWithCapacity(itemIDsFromUser.size());
             itemsByUser.put(userIndex, itemIndexes);
 //             cover testuser's reply items
-            if(userId==testuser){
+            if (userId == testuser) {
                 for (long itemID2 : itemIDsFromUser) {
-                    if(coveruser!=(postwriter.get(itemID2))) {
+                    if (coveruser != (postwriter.get(itemID2))) {
                         int i2 = itemIndex(itemID2);
                         itemIndexes.add(i2);
                     }
                 }
-            }else {
+            } else {
                 for (long itemID2 : itemIDsFromUser) {
                     int i2 = itemIndex(itemID2);
                     itemIndexes.add(i2);
@@ -110,8 +114,9 @@ public final class SVDPPFactorizer extends RatingSGDFactorizer {
             }
         }
 
-        LongPrimitiveIterator socialuser=SocialdataModel.getUserIDs();
-        while (socialuser.hasNext()) { //create social date model idset because user may have no friend ,and it will cause bug
+        LongPrimitiveIterator socialuser = SocialdataModel.getUserIDs();
+        while (socialuser
+                .hasNext()) { //create social date model idset because user may have no friend ,and it will cause bug
             long userID = socialuser.nextLong();
             SocialIDset.add(userID);
         }
@@ -130,16 +135,16 @@ public final class SVDPPFactorizer extends RatingSGDFactorizer {
                 long itemId = cachedItemIDs[index];
                 float rating = dataModel.getPreferenceValue(userId, itemId);
                 if (rating > 0) {//蓋掉testuser和coveruser 的 reply record
-                    if(testuser==userId) {
-                        if(coveruser==(postwriter.get(itemId))){
+                    if (testuser == userId) {
+                        if (coveruser == (postwriter.get(itemId))) {
                             test_record_count++;
-                        }else{
+                        } else {
                             updateParameters(userId, itemId, rating, currentLearningRate);
                         }
-                    }else{
+                    } else {
                         updateParameters(userId, itemId, rating, currentLearningRate);
                     }
-                }else{
+                } else {
                     updateParameters(userId, itemId, rating, currentLearningRate);
                 }
             }
@@ -160,30 +165,30 @@ public final class SVDPPFactorizer extends RatingSGDFactorizer {
             }
         }
 
-        System.out.println("Test records:"+test_record_count/numIterations);
+        System.out.println("Test records:" + test_record_count / numIterations);
         //aggregate writer feature  produce a new user-write vectors replace itemVectors
-        double[][] writerVectors= new double[WriterdataModel.getNumUsers()][numFeatures];
-        LongPrimitiveIterator it = WriterdataModel.getUserIDs() ;
+        double[][] writerVectors = new double[WriterdataModel.getNumUsers()][numFeatures];
+        LongPrimitiveIterator it = WriterdataModel.getUserIDs();
         while (it.hasNext()) {
-            long userid=it.nextLong();
+            long userid = it.nextLong();
             int userIndex = userIndex(userid);
-            for(int i=0;i<numFeatures;i++){
-                writerVectors[userIndex][i]=0.0;
+            for (int i = 0; i < numFeatures; i++) {
+                writerVectors[userIndex][i] = 0.0;
             }
-            int write=0;
+            int write = 0;
             for (long item : WriterdataModel.getItemIDsFromUser(userid)) {
-                int itemIndex=itemIndex(item);
-                if(itemIndex< dataModel.getNumItems()) {
+                int itemIndex = itemIndex(item);
+                if (itemIndex < dataModel.getNumItems()) {
                     write++;
                     for (int i = 0; i < numFeatures; i++) {
                         writerVectors[userIndex][i] += itemVectors[itemIndex][i];
                     }
                 }
             }
-            if(write>0) {
+            if (write > 0) {
                 writerVectors[userIndex] = unitvectorize(writerVectors[userIndex]);
-                writerVectors[userIndex][USER_BIAS_INDEX]/=write;
-                writerVectors[userIndex][ITEM_BIAS_INDEX]/=write;
+                writerVectors[userIndex][USER_BIAS_INDEX] /= write;
+                writerVectors[userIndex][ITEM_BIAS_INDEX] /= write;
             }
         }
         return createFactorization(userVectors, writerVectors);
@@ -246,19 +251,20 @@ public final class SVDPPFactorizer extends RatingSGDFactorizer {
         return sum;
     }
 
-    public double[] unitvectorize(double []vector){
-        double vectorlength=vectorlength(vector);
-        for(int i=FEATURE_OFFSET;i<numFeatures;i++){
-            vector[i]/=vectorlength;
+    public double[] unitvectorize(double[] vector) {
+        double vectorlength = vectorlength(vector);
+        for (int i = FEATURE_OFFSET; i < numFeatures; i++) {
+            vector[i] /= vectorlength;
         }
         return vector;
     }
-    public double vectorlength(double[] vector){
-        double vectorlength=0.0;
-        for(int i=FEATURE_OFFSET;i<numFeatures;i++){
-            vectorlength+= vector[i]*vector[i];
+
+    public double vectorlength(double[] vector) {
+        double vectorlength = 0.0;
+        for (int i = FEATURE_OFFSET; i < numFeatures; i++) {
+            vectorlength += vector[i] * vector[i];
         }
-        vectorlength=Math.sqrt(vectorlength);
+        vectorlength = Math.sqrt(vectorlength);
         return vectorlength;
     }
 }
