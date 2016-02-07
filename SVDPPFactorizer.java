@@ -241,6 +241,11 @@ public final class SVDPPFactorizer extends RatingSGDFactorizer {
                 y[itemIndex2][feature] += learningRate * deltaI2;
             }
         }
+        unitvectorize(itemVector);
+        unitvectorize(userVector);
+        for (int itemIndex2 : itemsByUser.get(userIndex)) {
+            unitvectorize(y[itemIndex2]);
+        }
     }
 
     private double predictRating(double[] userVector, int itemID) {
