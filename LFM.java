@@ -39,17 +39,17 @@ public  class LFM {
 
     //parameter
     protected static final int iteration =10;
-    protected static final int replyee_effectivelimit=20;
-    protected static final int friend_effectivelimit=20;
+    protected static final int replyee_effectivelimit=5;
+    protected static final int friend_effectivelimit=5;
     protected static final int features=600;
-    protected static final int Num_of_thread=14;
+    protected static final int Num_of_thread=1;
 
     public static void main(String[] args) throws Exception {
 
         // input
-        DataModel replydm = new FileDataModel(new File("data/replyscn200.csv"));
-        DataModel writerdm = new FileDataModel(new File("data/writerscn200.csv"));
-        DataModel socialdm = new FileDataModel(new File("data/socialscn200.csv"));
+        DataModel replydm = new FileDataModel(new File("data/replyscn300.csv"));
+        DataModel writerdm = new FileDataModel(new File("data/writerscn300.csv"));
+        DataModel socialdm = new FileDataModel(new File("data/socialscn300.csv"));
 
        /* int dm_reply_size=0;
         int dm_noreply_size=0;
@@ -104,11 +104,15 @@ public  class LFM {
         //experiment end
 
         //start output result
-        Writer outputwriter_bias = new BufferedWriter(new OutputStreamWriter(
+        Writer outputWriter = new BufferedWriter(new OutputStreamWriter(
                 new FileOutputStream("reply-bias.csv"), "utf-8"));
-        outputwriter_bias.write("testuser,coveruser,rank,interactions,totalinteractions"+"\n");
+        outputWriter.write("testuser,coveruser,rank,interactions,totalinteractions" + "\n");
 
+        StatisticAndOutput(tasklist,outputWriter);
+        outputWriter.close();
+    }
 
+    public static void StatisticAndOutput(ArrayList<task> tasklist,Writer outputWriter ) throws IOException {
         HashMap<Long,Integer> UserRank=new HashMap<Long, Integer>();// for mrr
         double DCRP=0;
         int [] rankall=new int [tasklist.size()]; //for C@K
@@ -132,7 +136,7 @@ public  class LFM {
             }else{
                 UserRank.put(testuser,rank);
             }
-            outputwriter_bias.write(output_bias);
+            outputWriter.write(output_bias);
             //  System.out.println("normal:"+output_bias);
         }
         DCRP/=tasklist.size();
@@ -157,7 +161,6 @@ public  class LFM {
         System.out.println(DCRP);
         System.out.println(MRR);
         System.out.println("User size:"+UserRank.size());
-        outputwriter_bias.close();
     }
 
     public static long[] findtopofPACISsim(Factorization mf,long userid,int size,FastIDSet excludeids,int startindex) throws TasteException {
@@ -214,15 +217,17 @@ public  class LFM {
         }
 
         public void run() {
-//            double task_start=System.currentTimeMillis();
+            double task_start=System.currentTimeMillis();
             long testuser=atask.getTestuser();
             long coveruser=atask.getCoveruser();
             FastIDSet Excludeids=atask.getExcludeids();
             try {
-                SUSSGDFactorizer f  = new SUSSGDFactorizer(dm, socialdm, writerdm, features, iteration, testuser,
-                                                           coveruser, postwriter);
+//                SUSSGDFactorizer f  = new SUSSGDFactorizer(dm, socialdm, writerdm, features, iteration, testuser,
+ //                                                          coveruser, postwriter);
+//                Factorizer f  = new CliMF(dm, socialdm, writerdm, features, iteration, testuser,
+//                                                           coveruser, postwriter);
                 // run normal MF
-//                Factorizer f = new RatingSGDFactorizer(dm,socialdm, writerdm, features, iteration,  testuser,coveruser,postwriter);
+                Factorizer f = new RatingSGDFactorizer(dm,socialdm, writerdm, features, iteration,  testuser,coveruser,postwriter);
 //                Factorizer f = new SVDPPFactorizer(dm,socialdm, writerdm, features, iteration,  testuser,coveruser,postwriter);
                 Factorization mf = f.factorize();
                 //find item part
@@ -248,9 +253,9 @@ public  class LFM {
 //            String output=atask.getTestuser()+","+atask.getCoveruser()+","+atask.getRank()+","+atask.getInteractions()+","+atask.getTotalinteractions()+"\n";
             // System.out.println(output);
             Excludeids.clear();
-//            double task_end=System.currentTimeMillis();
-//            task_end=(task_end-task_start)/60000;
-            //    System.out.println(task_end+"mins");
+            double task_end=System.currentTimeMillis();
+            task_end=(task_end-task_start)/60000;
+                System.out.println(task_end+"mins");
         }
     }
     private static ArrayList<task> generate_task(HashSet<Long> SocialIDset,DataModel socialdm,DataModel dm,HashMap<Long,Long> postwriter) throws
