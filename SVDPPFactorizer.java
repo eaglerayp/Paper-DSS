@@ -51,7 +51,7 @@ public final class SVDPPFactorizer extends RatingSGDFactorizer {
     public SVDPPFactorizer(DataModel dataModel, DataModel SocialdataModel, DataModel WriterdataModel,
                            int numFeatures, int numIterations, long testuser, long coveruser,
                            HashMap<Long, Long> postwriter) throws TasteException {
-        this(dataModel, SocialdataModel, WriterdataModel, numFeatures, 0.7, 0.1, 0.01, numIterations, 0.95, testuser,
+        this(dataModel, SocialdataModel, WriterdataModel, numFeatures, 1, 0.1, 0.01, numIterations, 0.95, testuser,
              coveruser, postwriter);
     }
 
@@ -165,7 +165,7 @@ public final class SVDPPFactorizer extends RatingSGDFactorizer {
             }
         }
 
-        System.out.println("Test records:" + test_record_count / numIterations);
+//        System.out.println("Test records:" + test_record_count / numIterations);
         //aggregate writer feature  produce a new user-write vectors replace itemVectors
         double[][] writerVectors = new double[WriterdataModel.getNumUsers()][numFeatures];
         LongPrimitiveIterator it = WriterdataModel.getUserIDs();
@@ -214,7 +214,7 @@ public final class SVDPPFactorizer extends RatingSGDFactorizer {
 
         double prediction = predictRating(pPlusY, itemIndex);
         double err = rating - prediction;
-        double normalized_error = err / denominator;
+//        double normalized_error = err / denominator;
 
 //        // adjust user bias
 //        userVector[USER_BIAS_INDEX] +=
@@ -235,7 +235,7 @@ public final class SVDPPFactorizer extends RatingSGDFactorizer {
             double deltaI = err * pPlusY[feature] - preventOverfitting * iF;
             itemVector[feature] += currentLearningRate * deltaI;
 
-            double commonUpdate = normalized_error * iF;
+            double commonUpdate = err * iF;
             for (int itemIndex2 : itemsByUser.get(userIndex)) {
                 double deltaI2 = commonUpdate - preventOverfitting * y[itemIndex2][feature];
                 y[itemIndex2][feature] += learningRate * deltaI2;

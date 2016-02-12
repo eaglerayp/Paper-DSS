@@ -233,7 +233,7 @@ public class CliMF extends AbstractFactorizer {
             }
             currentLearningRate *= learningRateDecay;
         }//end learning iteration
-
+        System.out.println("Test records:" + Total_Test_records / numIterations);
         //aggregate writer feature  produce a new user-write vectors replace itemVectors
         double[][] writerVectors = new double[WriterdataModel.getNumUsers()][numFeatures];
         LongPrimitiveIterator it = WriterdataModel.getUserIDs();
@@ -306,7 +306,7 @@ public class CliMF extends AbstractFactorizer {
                     double g_fij_fik = logistic(fij - fik);
 
                     double sgdu_item_son = g_fik_fij * g_fij_fik;
-                    double sgdu_item_mother = 1 - g_fik_fij;
+                    double sgdu_item_mother = 1.0 - g_fik_fij;
                     double sgdu_item = sgdu_item_son / sgdu_item_mother;
 
                     double sgdv_second_term = taylor_function(g_fik_fij) - taylor_function(g_fij_fik);
@@ -319,6 +319,7 @@ public class CliMF extends AbstractFactorizer {
 
 //        update ui
         for (int feature = FEATURE_OFFSET; feature < numFeatures; feature++) {
+            double pF = userVector[feature];
             double sgdu = 0.0;
             for (int index_rj = 0; index_rj < replyids.length; index_rj++) {
                 long replyid_j = replyids[index_rj];
@@ -335,26 +336,18 @@ public class CliMF extends AbstractFactorizer {
 
                 sgdu += g_fij[index_rj] * Vj + sum_sgdu_second_item;
             }
-            sgdu -= preventOverfitting * userVector[feature];
-
+            sgdu -= preventOverfitting * pF;
 
             userVector[feature] += currentLearningRate * sgdu;
-//            if (Double.isNaN(userVector[feature])) {
-//                System.out.println(userVector[feature]);
-//            }
-
 //            update all relevant vj
             for (int index_rj = 0; index_rj < replyids.length; index_rj++) {
                 long replyid_j = replyids[index_rj];
                 int qjIndex = itemIndex(replyid_j);
                 double[] itemVector = itemVectors[qjIndex];
                 double sgdvj = g_fij[index_rj] + sum_sgdv_cof;
-                sgdvj *= userVector[feature];
+                sgdvj *= pF;
                 sgdvj -= preventOverfitting * itemVector[feature];
                 itemVector[feature] += sgdvj*currentLearningRate;
-//                if (Double.isNaN(itemVector[feature])) {
-//                    System.out.println(itemVector[feature]);
-//                }
             }
         }
 //        unitVectorize
@@ -362,10 +355,10 @@ public class CliMF extends AbstractFactorizer {
             long replyid_j = replyids[index_rj];
             int qjIndex = itemIndex(replyid_j);
             double[] itemVector = itemVectors[qjIndex];
-            itemVector = unitvectorize(itemVector);
+            unitvectorize(itemVector);
         }
 
-        userVector = unitvectorize(userVector);
+        unitvectorize(userVector);
     }
 
     private double taylor_function(double x) {
